@@ -4,7 +4,7 @@ from typing import Optional, List
 
 """
 이 파일은 요청(Request)과 응답(Response)에 사용되는 데이터 스키마를 정의합니다.
-테이블 구조가 바뀌더라도, API 입출력 형식을 쉽게 조정할 수 있도록 분리되어 있습니다.
+models.py에 새로 추가된 세부 심리지수와 proposal_list를 반영하였습니다.
 """
 
 # ------------------------------------------------------
@@ -25,6 +25,13 @@ class RegionBase(ConfiguredBaseModel):
     policy_score: float
     sentiment_score: float
     gap_score: float
+
+    # ✅ 세부 심리지수 5개
+    infra_sentiment: float
+    housing_sentiment: float
+    health_sentiment: float
+    economy_sentiment: float
+    policy_efficiency: float
 
 
 class RegionCreate(RegionBase):
@@ -65,6 +72,8 @@ class SentimentLogResponse(SentimentLogBase):
 class RagSummaryBase(ConfiguredBaseModel):
     topic: str
     summary: str
+    # ✅ 정책 제안 리스트 추가
+    proposal_list: Optional[str] = None
 
 
 class RagSummaryCreate(RagSummaryBase):
@@ -90,6 +99,11 @@ class RegionDetailResponse(ConfiguredBaseModel):
     policy_score: float
     sentiment_score: float
     gap_score: float
+    infra_sentiment: float
+    housing_sentiment: float
+    health_sentiment: float
+    economy_sentiment: float
+    policy_efficiency: float
     summaries: Optional[List[RagSummaryResponse]] = []
 
 
