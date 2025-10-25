@@ -6,6 +6,8 @@ from app.utils.models import RegionData, RagSummary
 from datetime import datetime
 import openai
 import os
+from app.services.rag_service import recommend_policies, generate_rag_insight
+
 
 """
 rag_router.py
@@ -21,16 +23,19 @@ router = APIRouter(prefix="/rag", tags=["RAG"])
 # OpenAI API Key 로드
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-
-# ------------------------------------------------------
-# 요청 모델 정의
-# ------------------------------------------------------
 class RagRequest(BaseModel):
     region_name: str
     topic: str
     text: str
 
 
+class RAGRecommendRequest(BaseModel):
+    region_name: str
+    topic: str
+
+class RAGInsightRequest(BaseModel):
+    region_name: str
+    topic: str
 # ------------------------------------------------------
 # ChatGPT 기반 RAG 생성 함수
 # ------------------------------------------------------
@@ -133,6 +138,52 @@ def generate_rag_summary(request: RagRequest, db: Session = Depends(get_db)):
         return {"status": "error", "message": str(e)}
 
 
+@router.post("/recommend/")
+def rag_recommend(request: RAGRecommendRequest, db: Session = Depends(get_db)):
+    """
+    RAG 정책 추천 API
+    - 주제(topic)에 대한 유사 정책 검색 및 ChatGPT 요약 추천
+    """
+    try:
+        result = recommend_policies(
+            region_name=request.region_name,
+            topic=request.topic,
+            db=db,
+            top_k=5
+        )
+        return {
+            "status": "success",
+            "region": request.region_name,
+            "topic": request.topic,
+            "data": result
+        }
+
+    except Exception as e:
+        print(f"[RAG Router] 오류 발생: {e}")
+        return {"status": "error", "message": str(e)}
+
+@router.post("/insight/")
+def rag_insight(request: RAGInsightRequest, db: Session = Depends(get_db)):
+    """
+    RAG 종합 인사이트 API
+    - 시민 불만 요약 + 유사 정책 매칭 + 최종 종합 요약
+    """
+    try:
+        result = generate_rag_insight(
+            region_name=request.region_name,
+            topic=request.topic,
+            db=db,
+        )
+        return {
+            "status": "success",
+            "region": request.region_name,
+            "topic": request.topic,
+            "data": result
+        }
+
+    except Exception as e:
+        print(f"[RAG Insight API] 오류 발생: {e}")
+        return {"status": "error", "message": str(e)}
 # ------------------------------------------------------
 # 모듈 실행 확인
 # ------------------------------------------------------

@@ -1,3 +1,4 @@
+# app/routers/region_router.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.utils.database import get_db
@@ -6,18 +7,9 @@ from app.utils.schemas import RegionResponse, RegionDetailResponse
 
 router = APIRouter()
 
-"""
-region_router.py
-지역 데이터 조회 관련 API 라우터
-- /api/regions/ (전체 조회)
-- /api/regions/{region_name}/ (상세 조회)
-"""
-
 @router.get("/regions/", response_model=list[RegionResponse])
 def get_all_regions(db: Session = Depends(get_db)):
-    regions = db.query(RegionData).all()
-    return regions
-
+    return db.query(RegionData).all()
 
 @router.get("/regions/{region_name}/", response_model=RegionDetailResponse)
 def get_region_detail(region_name: str, db: Session = Depends(get_db)):
@@ -27,12 +19,24 @@ def get_region_detail(region_name: str, db: Session = Depends(get_db)):
     summaries = db.query(RagSummary).filter(RagSummary.region_id == region.id).all()
 
     return {
+        "id": region.id,
         "region_name": region.region_name,
-        "policy_score": region.policy_score,
-        "sentiment_score": region.sentiment_score,
+
+        "policy_avg_score": region.policy_avg_score,
+        "transport_infra_policy_score": region.transport_infra_policy_score,
+        "labor_economy_policy_score": region.labor_economy_policy_score,
+        "healthcare_policy_score": region.healthcare_policy_score,
+        "policy_efficiency_score": region.policy_efficiency_score,
+        "housing_environment_policy_score": region.housing_environment_policy_score,
+
+        "sentiment_avg_score": region.sentiment_avg_score,
+        "sentiment_transport_infra_score": region.sentiment_transport_infra_score,
+        "sentiment_labor_economy_score": region.sentiment_labor_economy_score,
+        "sentiment_healthcare_score": region.sentiment_healthcare_score,
+        "sentiment_policy_efficiency_score": region.sentiment_policy_efficiency_score,
+        "sentiment_housing_environment_score": region.sentiment_housing_environment_score,
+
         "gap_score": region.gap_score,
-        "summaries": summaries
+        "updated_at": region.updated_at,
+        "summaries": summaries,
     }
-
-
-print("[region_router.py] 지역 데이터 라우터가 성공적으로 로드되었습니다.")

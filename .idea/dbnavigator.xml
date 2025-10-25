@@ -27,26 +27,33 @@
   </component>
   <component name="DBNavigator.Project.DatabaseConsoleManager">
     <connection id="fdbaef9b-28e9-4730-b1d5-17cedc8613cc">
-      <console name="Connection" type="STANDARD" schema="main" session="Main"><![CDATA[SELECT * FROM region_data;]]></console>
+      <console name="Connection" type="STANDARD" schema="main" session="Main"><![CDATA[SELECT * FROM rag_policy;]]></console>
     </connection>
   </component>
   <component name="DBNavigator.Project.DatabaseEditorStateManager">
     <last-used-providers />
   </component>
   <component name="DBNavigator.Project.DatabaseFileManager">
-    <open-files />
+    <open-files>
+      <object connection-id="fdbaef9b-28e9-4730-b1d5-17cedc8613cc" object-ref="consoles/Connection" />
+    </open-files>
   </component>
   <component name="DBNavigator.Project.DatabaseSessionManager">
     <connection id="fdbaef9b-28e9-4730-b1d5-17cedc8613cc" />
   </component>
   <component name="DBNavigator.Project.DatasetFilterManager">
+    <filter-actions connection-id="fdbaef9b-28e9-4730-b1d5-17cedc8613cc" dataset="main.sentiment_analysis_log" active-filter-id="" />
     <filter-actions connection-id="fdbaef9b-28e9-4730-b1d5-17cedc8613cc" dataset="main.rag_summary" active-filter-id="">
       <filter id="494f243d-f08f-4274-bd6b-86cdaa3a5038" name="Filter" temporary="false" custom-name="false" type="basic" join-type="AND">
         <condition column="id" operator="=" value="" active="true" />
       </filter>
     </filter-actions>
     <filter-actions connection-id="fdbaef9b-28e9-4730-b1d5-17cedc8613cc" dataset="main.sentiment_log" active-filter-id="" />
-    <filter-actions connection-id="fdbaef9b-28e9-4730-b1d5-17cedc8613cc" dataset="main.region_data" active-filter-id="" />
+    <filter-actions connection-id="fdbaef9b-28e9-4730-b1d5-17cedc8613cc" dataset="main.region_data" active-filter-id="ccb1e345-a1a0-43b0-bbc0-0968cfd50e08">
+      <filter id="ccb1e345-a1a0-43b0-bbc0-0968cfd50e08" name="Filter" temporary="false" custom-name="false" type="basic" join-type="AND">
+        <condition column="id" operator="=" value="" active="true" />
+      </filter>
+    </filter-actions>
   </component>
   <component name="DBNavigator.Project.ExecutionManager">
     <retain-sticky-names value="false" />
@@ -62,6 +69,9 @@
   <component name="DBNavigator.Project.ObjectQuickFilterManager">
     <last-used-operator value="EQUAL" />
     <filters />
+  </component>
+  <component name="DBNavigator.Project.ScriptExecutionManager" clear-outputs="true">
+    <recently-used-interfaces />
   </component>
   <component name="DBNavigator.Project.Settings">
     <connections>
