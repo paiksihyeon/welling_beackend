@@ -31,7 +31,7 @@ def update_all_gap_scores(db: Session):
             return {"status": "empty"}
 
         for region in regions:
-            region.gap_score = calculate_gap(region.policy_score, region.sentiment_score)
+            region.gap_score = calculate_gap(region.policy_avg_score, region.sentiment_avg_score)
             region.updated_at = datetime.now()
             db.add(region)
 

@@ -27,8 +27,8 @@ def save_rag_summary(db: Session, region_name: str, topic: str, summary: str):
             print(f"[rag_service] {region_name} 지역이 존재하지 않아 새로 생성합니다.")
             region = RegionData(
                 region_name=region_name,
-                policy_score=0.0,
-                sentiment_score=0.0,
+                policy_avg_score=0.0,
+                sentiment_avg_score=0.0,
                 gap_score=0.0,
                 updated_at=datetime.utcnow(),
             )

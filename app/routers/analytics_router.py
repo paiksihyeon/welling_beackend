@@ -15,8 +15,8 @@ def get_region_summary(db: Session = Depends(get_db)):
         result = [
             {
                 "region_name": region.region_name,
-                "policy_score": region.policy_score,
-                "sentiment_score": region.sentiment_score,
+                "policy_score": region.policy_avg_score,
+                "sentiment_score": region.sentiment_avg_score,
                 "gap_score": region.gap_score,
                 "updated_at": region.updated_at,
             }

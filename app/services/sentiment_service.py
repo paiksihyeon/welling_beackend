@@ -25,8 +25,8 @@ def save_sentiment_result(
             print(f"[sentiment_service] {region_name} 지역이 존재하지 않아 새로 생성합니다.")
             region = RegionData(
                 region_name=region_name,
-                policy_score=0.0,
-                sentiment_score=0.0,
+                policy_avg_score=0.0,
+                sentiment_avg_score=0.0,
                 gap_score=0.0,
                 updated_at=datetime.utcnow()
             )
@@ -38,15 +38,15 @@ def save_sentiment_result(
         log = SentimentAnalysisLog(
             region_id=region.id,
             text=text,
-            sentiment_score=round(score, 2),
+            sentiment_avg_score=round(score, 2),
             model=model,
             created_at=datetime.utcnow()
         )
         db.add(log)
 
         # 지역 심리·불균형 점수 갱신
-        region.sentiment_score = round(score, 2)
-        region.gap_score = calculate_gap(region.policy_score, region.sentiment_score)
+        region.sentiment_avg_score = round(score, 2)
+        region.gap_score = calculate_gap(region.policy_avg_score, region.sentiment_avg_score)
         region.updated_at = datetime.utcnow()
 
         # 커밋 및 로그 출력
