@@ -35,7 +35,7 @@ def load_policy_vectors():
 
 def load_region_vectors(region_name: str):
     """지역별 여론 벡터 로드 (예: 서울_vectors.json)"""
-    file_path = os.path.join(BASE_PATH, f"{region_name}_vectors.json")
+    file_path = os.path.join(BASE_PATH, f"{region_name}_vectors_e5.json")
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"❌ {region_name}_vectors.json 파일이 없습니다: {file_path}")
     print(f"[vector_service] ✅ 지역 벡터 로드 완료: {file_path}")
@@ -109,32 +109,29 @@ def find_top_gap_topics(region_vectors, top_k: int = 3):
 # ✅ 정책 벡터 유사도 계산
 # -------------------------------
 def find_similar_policies(region_name: str, topic: str, top_k: int = 3):
-    """
-    특정 지역 주제 벡터 평균과 유사한 정책 벡터 찾기
-    - 지역 벡터 파일이 list 또는 dict 어떤 형태든 자동 대응
-    """
     region_vectors_raw = load_region_vectors(region_name)
 
-    # 형태에 따라 변환
-    if isinstance(region_vectors_raw, list):
-        region_vectors = aggregate_topic_vectors(region_vectors_raw)
-    else:
-        region_vectors = region_vectors_raw
+    # 형태 변환
+    region_vectors = (
+        aggregate_topic_vectors(region_vectors_raw)
+        if isinstance(region_vectors_raw, list)
+        else region_vectors_raw
+    )
 
-    # 벡터 가져오기
     if topic not in region_vectors:
-        raise ValueError(f"❌ {region_name} 지역 데이터에 '{topic}' 주제가 없습니다.")
+        raise ValueError(f"{region_name} 지역 데이터에 '{topic}' 주제가 없습니다.")
 
-    topic_vec = region_vectors[topic]["vector"]
+    topic_vec = np.array(region_vectors[topic]["vector"], dtype=float)
+    topic_vec /= np.linalg.norm(topic_vec) + 1e-8
+
     policy_vectors = load_policy_vectors()
 
     similarities = []
     for policy_topic, vec in policy_vectors.items():
-        try:
-            score = cosine_similarity(topic_vec, vec)
-            similarities.append((policy_topic, score))
-        except Exception:
-            continue
+        arr = np.array(vec, dtype=float)
+        arr /= np.linalg.norm(arr) + 1e-8
+        score = float(np.dot(topic_vec, arr))
+        similarities.append((policy_topic, score))
 
     similarities.sort(key=lambda x: x[1], reverse=True)
     return similarities[:top_k]
