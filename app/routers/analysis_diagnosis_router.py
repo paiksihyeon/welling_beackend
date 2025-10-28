@@ -1,10 +1,10 @@
-# app/routers/analysis_diagnosis_router.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.utils.database import get_db
 from app.utils.models import SentimentAnalysisLog
 from app.services.vector_service import load_region_vectors, find_top_gap_topics
 from openai import OpenAI
+from urllib.parse import unquote
 import os, json
 
 router = APIRouter(prefix="/analysis/diagnosis", tags=["Analysis - Diagnosis"])
@@ -16,14 +16,18 @@ def diagnose_region(region_name: str, db: Session = Depends(get_db)):
     """
     ✅ 지역별 시민 여론 + 벡터 갭 기반 문제진단 API
     1️⃣ SentimentAnalysisLog에서 시민 여론 불러오기
-    2️⃣ app/files/{region_name}_vectors.json 에서 갭이 큰 주제 추출
+    2️⃣ app/files/{region_name}_vectors_e5.json 에서 갭이 큰 주제 추출
     3️⃣ GPT에게 Welling 표준 프롬프트(JSON 구조)로 요청
     """
 
-    # 1️⃣ 시민 여론 데이터 불러오기
+    # ✅ 한글 URL 복원 및 공백 제거
+    region_name = unquote(region_name).strip()
+
+    # 1️⃣ 시민 여론 데이터 불러오기 (부분 일치 허용)
     records = db.query(SentimentAnalysisLog).filter(
-        SentimentAnalysisLog.region == region_name
+        SentimentAnalysisLog.region.like(f"%{region_name}%")
     ).all()
+
     if not records:
         raise HTTPException(status_code=404, detail=f"{region_name} 지역의 여론 데이터가 없습니다.")
 

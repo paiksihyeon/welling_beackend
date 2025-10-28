@@ -43,9 +43,9 @@ def recommend_policy_action(region_name: str):
     try:
         similarities = []
         for file in os.listdir(base_path):
-            if not file.endswith("_vectors.json"):
+            if not file.endswith("_vectors_e5.json"):
                 continue
-            other_region = file.replace("_vectors.json", "")
+            other_region = file.replace("_vectors_e5.json", "")
             if other_region == region_name:
                 continue
 
