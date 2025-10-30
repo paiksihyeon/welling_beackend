@@ -1,3 +1,4 @@
+# app/routers/analysis_diagnosis_router.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.utils.database import get_db
@@ -5,6 +6,7 @@ from app.utils.models import SentimentAnalysisLog
 from app.services.vector_service import load_region_vectors, find_top_gap_topics
 from openai import OpenAI
 from urllib.parse import unquote
+from datetime import datetime
 import os, json
 
 router = APIRouter(prefix="/analysis/diagnosis", tags=["Analysis - Diagnosis"])
@@ -98,11 +100,15 @@ def diagnose_region(region_name: str, db: Session = Depends(get_db)):
         result = json.loads(response.choices[0].message.content)
         print(f"[analysis_diagnosis] ✅ '{region_name}' 문제진단 완료")
 
+        # ✅ 진단 시간 추가
+        diagnosed_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         return {
             "region": region_name,
             "top_topics": top_topic_str,
             "record_count": record_count,
             "scarcity_level": scarcity_level,
+            "diagnosed_at": diagnosed_time,
             "result": result
         }
 
