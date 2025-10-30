@@ -1,4 +1,3 @@
-# app/routers/analysis_diagnosis_router.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.utils.database import get_db
@@ -16,10 +15,10 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 @router.get("/{region_name}")
 def diagnose_region(region_name: str, db: Session = Depends(get_db)):
     """
-    ✅ 지역별 시민 여론 + 벡터 갭 기반 문제진단 API
+    ✅ 지역별 시민 여론 + 갭 기반 문제진단 API
     1️⃣ SentimentAnalysisLog에서 시민 여론 불러오기
-    2️⃣ app/files/{region_name}_vectors_e5.json 에서 갭이 큰 주제 추출
-    3️⃣ GPT에게 Welling 표준 프롬프트(JSON 구조)로 요청
+    2️⃣ gap_score.csv 기반 상위 3개 주제 추출
+    3️⃣ GPT에게 분석 요청
     """
 
     # ✅ 한글 URL 복원 및 공백 제거
@@ -36,12 +35,12 @@ def diagnose_region(region_name: str, db: Session = Depends(get_db)):
     texts = [r.text for r in records if r.text]
     combined_text = "\n".join(texts[:30])  # 상위 30개까지만 사용
 
-    # 2️⃣ 갭이 큰 주제 추출
+    # 2️⃣ gap_score.csv 기반 갭이 큰 주제 추출
     try:
-        vectors = load_region_vectors(region_name)
-        top_topics = find_top_gap_topics(vectors, top_k=3)
-        top_topic_str = ", ".join(top_topics)
-    except Exception:
+        top_topics = find_top_gap_topics(region_name=region_name, top_k=3)
+        top_topic_str = ", ".join([t["topic"] for t in top_topics])
+    except Exception as e:
+        print(f"[analysis_diagnosis] ⚠️ 주제 추출 실패: {e}")
         top_topic_str = "교통, 주거, 의료 등 생활 전반"
 
     # 3️⃣ 여론 희소성 판단용 데이터
@@ -53,7 +52,7 @@ def diagnose_region(region_name: str, db: Session = Depends(get_db)):
     else:
         scarcity_level = "여론 데이터가 부족하거나 정보 접근성이 낮은 지역임"
 
-    # 4️⃣ Welling 프롬프트 구성
+    # 4️⃣ GPT 프롬프트 구성
     prompt = f"""
     === 역할 정의 ===
     너는 'Welling' 프로젝트의 AI 정책 분석 엔진이다.

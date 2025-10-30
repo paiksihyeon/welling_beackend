@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from app.services.vector_service import (
     load_policy_vectors,
-    load_region_vectors,
     find_top_gap_topics,
     cosine_similarity,
     aggregate_topic_vectors
@@ -10,32 +9,55 @@ from openai import OpenAI
 import os, json
 
 router = APIRouter(prefix="/rag/action", tags=["RAG - Policy Action"])
-
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def safe_load_region_vectors(region_name: str):
+    """다양한 파일명 패턴으로 지역 벡터 JSON 로드"""
+    base_path = "app/files"
+    candidates = [
+        os.path.join(base_path, f"{region_name}_vectors_e5.json"),
+        os.path.join(base_path, f"{region_name}_vectors.json"),
+        os.path.join(base_path, f"{region_name}.json"),
+        os.path.join(base_path, f"{region_name.lower()}_vectors_e5.json"),
+        os.path.join(base_path, f"{region_name.capitalize()}_vectors_e5.json"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            print(f"[rag_action] ✅ 지역 벡터 로드 완료: {path}")
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    raise FileNotFoundError(f"⚠️ {region_name} 지역 벡터 파일을 찾을 수 없습니다.")
 
 
 @router.get("/{region_name}")
 def recommend_policy_action(region_name: str):
-    """
-    ✅ LLM + RAG 정책 기반 정책 액션 제안 API (Cross-Region 비교 포함)
-    1️⃣ app/files/{region_name}_vectors.json → 갭이 큰 주제 1개 선택
-    2️⃣ 다른 지역 *_vectors.json 파일 중 동일 주제의 유사도 계산 → 상위 3개 지역 선택
-    3️⃣ app/files/policy_vectors.json → 정책 벡터 유사도 계산
-    4️⃣ GPT → JSON 형식의 정책 개선 카드 생성
-    """
-
+    """LLM + RAG 기반 정책 개선 제안 API"""
     base_path = "app/files"
 
-    # 1️⃣ 지역 벡터 로드 및 변환
+    # 1️⃣ 지역 벡터 로드 및 주제 선택
     try:
-        region_vectors_raw = load_region_vectors(region_name)
+        region_vectors_raw = safe_load_region_vectors(region_name)
         region_vectors = (
             aggregate_topic_vectors(region_vectors_raw)
             if isinstance(region_vectors_raw, list)
             else region_vectors_raw
         )
-        top_topic = find_top_gap_topics(region_vectors, top_k=1)[0]
-        topic_vec = region_vectors[top_topic]["vector"]
+
+        top_topic_info = find_top_gap_topics(region_vectors=region_vectors, region_name=region_name, top_k=1)[0]
+        top_topic_en = top_topic_info.get("topic_en")
+        top_topic_kr = top_topic_info.get("topic")
+
+        # ✅ 영어 or 한글 키 모두 탐색
+        if top_topic_en in region_vectors:
+            topic_vec = region_vectors[top_topic_en]["vector"]
+            top_topic = top_topic_en
+        elif top_topic_kr in region_vectors:
+            topic_vec = region_vectors[top_topic_kr]["vector"]
+            top_topic = top_topic_kr
+        else:
+            raise KeyError(f"'{top_topic_en}' 또는 '{top_topic_kr}' 주제를 region_vectors에서 찾을 수 없습니다.")
+
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"{region_name} 지역 벡터를 불러오지 못했습니다: {e}")
 
@@ -50,7 +72,7 @@ def recommend_policy_action(region_name: str):
                 continue
 
             try:
-                other_vectors_raw = load_region_vectors(other_region)
+                other_vectors_raw = safe_load_region_vectors(other_region)
                 other_vectors = (
                     aggregate_topic_vectors(other_vectors_raw)
                     if isinstance(other_vectors_raw, list)
@@ -91,7 +113,6 @@ def recommend_policy_action(region_name: str):
 
         similarities.sort(key=lambda x: x[1], reverse=True)
         top_policies = similarities[:3]
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"정책 벡터 비교 중 오류 발생: {e}")
 

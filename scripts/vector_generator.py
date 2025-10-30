@@ -1,20 +1,23 @@
 """
-Welling Vector Generator (E5 기반)
+Welling Vector Generator (CSV → E5 벡터 변환)
 -----------------------------------
 ✅ 역할:
 - 정책 문서 → policy_vectors.json 생성
-- 지역별 여론 데이터 → {region}_vectors.json 생성
-- 기존 app/files 폴더 구조에 맞춤형으로 동작
+- 지역별 CSV 파일 → {region}_vectors_e5.json 생성
+- CSV는 app/files 폴더에 "{지역명}.csv" 형태로 존재해야 함
 
-✅ 요구사항:
-- app/files/policy_corpus.txt   → 정책 원문 텍스트 파일
-- app/files/sentiment_dataset.csv → 지역별 여론 텍스트 (선택사항)
-- app/files 폴더에 17개 시도명 데이터셋 존재
+✅ CSV 요구사항:
+- 컬럼: topic, text
+  예시:
+  topic,text
+  주거환경,부산의 전세가격이 너무 높아요
+  노동경제,일자리 찾기가 너무 힘들어요
 """
 
 import os
 import json
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
 
@@ -44,7 +47,7 @@ def chunk_text(text, max_tokens=350):
         yield " ".join(words[i:i + max_tokens])
 
 
-def embed_text(text: str, prefix="passage: "):
+def embed_text(text: str, prefix="query: "):
     """문서 또는 문장 임베딩"""
     if not text or not text.strip():
         return None
@@ -73,7 +76,6 @@ def generate_policy_vectors():
         lines = [l.strip() for l in f.readlines() if l.strip()]
 
     for line in tqdm(lines):
-        # "정책명: 내용" 형태로 되어 있다고 가정
         if ":" in line:
             name, text = line.split(":", 1)
         else:
@@ -90,46 +92,41 @@ def generate_policy_vectors():
 
 
 # --------------------------
-# 2️⃣ 지역별 여론 벡터화
+# 2️⃣ 지역별 CSV → 벡터 변환
 # --------------------------
-def generate_region_vectors():
-    """기존 17개 지역 *_vectors.json 자동 생성"""
-    regions = [
-        "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
-        "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"
-    ]
+def generate_region_vectors_from_csv():
+    """CSV 파일을 직접 임베딩하여 *_vectors_e5.json 생성"""
+    csv_files = [f for f in os.listdir(FILES_DIR) if f.endswith(".csv")]
 
-    for region in regions:
-        src_path = os.path.join(FILES_DIR, f"{region}_vectors.json")
-        dst_path = os.path.join(FILES_DIR, f"{region}_vectors_e5.json")
+    for csv_file in csv_files:
+        region_name = csv_file.replace(".csv", "")
+        csv_path = os.path.join(FILES_DIR, csv_file)
+        dst_path = os.path.join(FILES_DIR, f"{region_name}_vectors_e5.json")
 
-        if not os.path.exists(src_path):
-            print(f"⚠️ {region}_vectors.json 파일이 없습니다.")
+        print(f"[vector_generator] {region_name}.csv → {region_name}_vectors_e5.json 변환 중...")
+
+        try:
+            df = pd.read_csv(csv_path, encoding="utf-8")
+        except UnicodeDecodeError:
+            df = pd.read_csv(csv_path, encoding="cp949")
+
+        if "topic" not in df.columns or "text" not in df.columns:
+            print(f"⚠️ {region_name}.csv 파일에 'topic' 또는 'text' 컬럼이 없습니다. 건너뜁니다.")
             continue
 
-        with open(src_path, "r", encoding="utf-8") as f:
-            region_data = json.load(f)
-
-        print(f"[vector_generator] {region} 여론 벡터 재생성 중...")
         topic_dict = {}
-
-        # 형태에 따라 자동 인식 (list 또는 dict)
-        if isinstance(region_data, list):
-            iterable = region_data
-        elif isinstance(region_data, dict):
-            iterable = [{"topic": t, "text": d.get("text", "")} for t, d in region_data.items()]
-        else:
-            print(f"⚠️ {region} 데이터 구조 인식 실패")
-            continue
-
-        for item in tqdm(iterable):
-            topic = item.get("topic")
-            text = item.get("text")
+        for _, row in tqdm(df.iterrows(), total=len(df)):
+            topic = str(row["topic"]).strip()
+            text = str(row["text"]).strip()
             if not topic or not text:
                 continue
-            v = embed_text(text, prefix="query: ")
+            v = embed_text(text)
             if v is not None:
                 topic_dict.setdefault(topic, []).append(v)
+
+        if not topic_dict:
+            print(f"⚠️ {region_name}.csv에서 유효한 데이터가 없습니다.")
+            continue
 
         topic_avg = {
             topic: {
@@ -142,7 +139,7 @@ def generate_region_vectors():
         with open(dst_path, "w", encoding="utf-8") as f:
             json.dump(topic_avg, f, ensure_ascii=False, indent=2)
 
-        print(f"✅ {region}_vectors_e5.json 저장 완료 ({len(topic_avg)}개 토픽)")
+        print(f"✅ {region_name}_vectors_e5.json 저장 완료 ({len(topic_avg)}개 주제)")
 
 
 # --------------------------
@@ -154,7 +151,7 @@ if __name__ == "__main__":
     # 정책 벡터 생성
     generate_policy_vectors()
 
-    # 지역별 여론 벡터 생성
-    generate_region_vectors()
+    # 지역 CSV 파일 기반 벡터 생성
+    generate_region_vectors_from_csv()
 
     print("🎉 모든 벡터 생성이 완료되었습니다.")
