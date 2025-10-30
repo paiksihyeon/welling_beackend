@@ -9,11 +9,11 @@ GAP_CSV_PATH = os.path.join(BASE_PATH, "gap_score.csv")
 
 # ✅ 표준 주제 매핑 (CSV 컬럼명 → (한글명, 영문명))
 topic_map = {
-    "gap_transport_infra": ("교통인프라", "transport_infra"),
-    "gap_labor_economy": ("노동경제", "labor_economy"),
-    "gap_healthcare": ("의료보건", "healthcare"),
-    "gap_policy_efficiency": ("정책효능감", "policy_efficiency"),
-    "gap_housing_environment": ("주거환경", "housing_environment"),
+    "gap_transport_infra": ("교통 인프라", "transport_infra"),
+    "gap_labor_economy": ("노동 경제", "labor_economy"),
+    "gap_healthcare": ("의료 보건", "healthcare"),
+    "gap_policy_efficiency": ("정책 효능감", "policy_efficiency"),
+    "gap_housing_environment": ("주거 환경", "housing_environment"),
 }
 
 

@@ -48,13 +48,22 @@ def recommend_policy_action(region_name: str):
         top_topic_en = top_topic_info.get("topic_en")
         top_topic_kr = top_topic_info.get("topic")
 
-        # ✅ 영어 or 한글 키 모두 탐색
-        if top_topic_en in region_vectors:
-            topic_vec = region_vectors[top_topic_en]["vector"]
-            top_topic = top_topic_en
-        elif top_topic_kr in region_vectors:
-            topic_vec = region_vectors[top_topic_kr]["vector"]
-            top_topic = top_topic_kr
+        # ✅ 유연한 키 매칭 (띄어쓰기, 대소문자, 한글/영문 모두 대응)
+        normalized_keys = {k.replace(" ", "").lower(): k for k in region_vectors.keys()}
+        target_candidates = [
+            top_topic_en.replace(" ", "").lower(),
+            top_topic_kr.replace(" ", "").lower()
+        ]
+
+        found_key = None
+        for cand in target_candidates:
+            if cand in normalized_keys:
+                found_key = normalized_keys[cand]
+                break
+
+        if found_key:
+            topic_vec = region_vectors[found_key]["vector"]
+            top_topic = found_key
         else:
             raise KeyError(f"'{top_topic_en}' 또는 '{top_topic_kr}' 주제를 region_vectors에서 찾을 수 없습니다.")
 
@@ -79,9 +88,15 @@ def recommend_policy_action(region_name: str):
                     else other_vectors_raw
                 )
 
-                if top_topic in other_vectors:
-                    sim = cosine_similarity(topic_vec, other_vectors[top_topic]["vector"])
-                    similarities.append((other_region, sim))
+                # ✅ 동일한 방식으로 키 매칭 수행
+                normalized_other = {k.replace(" ", "").lower(): k for k in other_vectors.keys()}
+                for cand in target_candidates:
+                    if cand in normalized_other:
+                        matched_key = normalized_other[cand]
+                        sim = cosine_similarity(topic_vec, other_vectors[matched_key]["vector"])
+                        similarities.append((other_region, sim))
+                        break
+
             except Exception:
                 continue
 
@@ -90,12 +105,11 @@ def recommend_policy_action(region_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"다른 지역 정책 비교 중 오류 발생: {e}")
 
-    # 3️⃣ 정책 벡터 로드 및 유사도 계산 (list/dict 자동 대응)
+    # 3️⃣ 정책 벡터 로드 및 유사도 계산
     try:
         policy_vectors_raw = load_policy_vectors()
         similarities = []
 
-        # ✅ list 구조
         if isinstance(policy_vectors_raw, list):
             for entry in policy_vectors_raw:
                 name = entry.get("policy_name") or entry.get("title") or "Unknown Policy"
@@ -105,7 +119,6 @@ def recommend_policy_action(region_name: str):
                 score = cosine_similarity(topic_vec, vec)
                 similarities.append((name, score))
 
-        # ✅ dict 구조
         elif isinstance(policy_vectors_raw, dict):
             for name, vec in policy_vectors_raw.items():
                 score = cosine_similarity(topic_vec, vec)
